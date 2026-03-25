@@ -1,4 +1,5 @@
 from flask import Flask, request, render_template
+from etl.pipeline import run_pipeline
 from etl.transform import transform_single
 from etl.validate import validate_data
 from etl.load import load_data
@@ -6,6 +7,25 @@ from etl.load import load_data
 app = Flask(__name__)
 
 
+# --------------------------------------------------
+# 🚀 RUN ETL ON STARTUP (ONLY ONCE)
+# --------------------------------------------------
+def initialize_pipeline():
+    try:
+        print("\n🔄 Running initial ETL pipeline...\n")
+        run_pipeline()
+        print("\n✅ Initial ETL completed\n")
+    except Exception as e:
+        print(f"\n❌ ETL Initialization Failed: {e}\n")
+
+
+# Run ETL once before app starts
+initialize_pipeline()
+
+
+# --------------------------------------------------
+# 🌐 ROUTES
+# --------------------------------------------------
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -34,12 +54,14 @@ def submit():
                     data[field] = float(data[field])
 
         # -------------------------
-        # BOOLEAN FIX (CRITICAL)
+        # BOOLEAN FIX
         # -------------------------
-        data["Is_Returning_Customer"] = True if data.get("Is_Returning_Customer") == "1" else False
+        data["Is_Returning_Customer"] = (
+            True if data.get("Is_Returning_Customer") == "1" else False
+        )
 
         # -------------------------
-        # ETL FLOW
+        # ETL FLOW (REAL-TIME)
         # -------------------------
         df = transform_single(data)
         validate_data(df)
@@ -51,5 +73,8 @@ def submit():
         return render_template("index.html", message=f"❌ Error: {str(e)}")
 
 
+# --------------------------------------------------
+# ▶️ MAIN
+# --------------------------------------------------
 if __name__ == "__main__":
     app.run(debug=True)
