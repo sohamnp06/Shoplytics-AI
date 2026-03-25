@@ -1,7 +1,4 @@
-import pandas as pd
-from config import RAW_DATA_PATH
+from etl.pipeline import run_pipeline
 
-def extract_data():
-    df = pd.read_csv(RAW_DATA_PATH)
-    print(f"[EXTRACT] Loaded {df.shape}")
-    return df
+if __name__ == "__main__":
+    run_pipeline()
