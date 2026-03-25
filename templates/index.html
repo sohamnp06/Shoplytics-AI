@@ -1,123 +1,215 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <title>Sales Data Entry</title>
-    <style>
-        body {
-            font-family: Arial;
-            margin: 40px;
-        }
-        form {
-            max-width: 500px;
-        }
-        input, select {
-            width: 100%;
-            margin-bottom: 10px;
-            padding: 8px;
-        }
-        button {
-            padding: 10px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-        }
-        .message {
-            margin-bottom: 20px;
-            font-weight: bold;
-        }
-    </style>
-</head>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shoplytics AI • Sales Data Entry</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}" />
+  </head>
 
-<body>
+  <body>
+    <div class="bg"></div>
 
-<h2>📊 Sales Data Entry</h2>
+    <header class="topbar">
+      <div class="container topbar__inner">
+        <div class="brand">
+          <div class="brand__mark" aria-hidden="true">SA</div>
+          <div class="brand__text">
+            <div class="brand__name">Shoplytics AI</div>
+            <div class="brand__tag">Sales ingestion • ETL-backed</div>
+          </div>
+        </div>
+        <div class="topbar__hint">Form submit → transform → validate → load</div>
+      </div>
+    </header>
 
-{% if message %}
-<div class="message">{{ message }}</div>
-{% endif %}
+    <main class="container main">
+      <section class="hero">
+        <div>
+          <h1>Sales Data Entry</h1>
+          <p class="sub">
+            Enter a single order record. Required fields are marked; optional fields default to 0 where
+            applicable.
+          </p>
+        </div>
+        <div class="hero__badge" role="status">
+          <div class="hero__badgeTitle">Status</div>
+          <div class="hero__badgeValue">Ready</div>
+        </div>
+      </section>
 
-<form action="/submit" method="post">
+      {% if message %}
+      {% set is_success = ('✅' in message) %}
+      <div class="alert {{ 'alert--success' if is_success else 'alert--error' }}" role="alert">
+        <div class="alert__icon" aria-hidden="true">{{ '✓' if is_success else '!' }}</div>
+        <div class="alert__content">
+          <div class="alert__title">{{ 'Saved' if is_success else 'Something went wrong' }}</div>
+          <div class="alert__message">{{ message }}</div>
+        </div>
+      </div>
+      {% endif %}
 
-<label>Order ID</label>
-<input name="Order_ID" required>
+      <form class="card" action="/submit" method="post">
+        <div class="card__header">
+          <div>
+            <h2>Order details</h2>
+            <p class="muted">All fields map 1:1 to your pipeline input keys.</p>
+          </div>
+          <button class="btn btn--primary" type="submit">Submit record</button>
+        </div>
 
-<label>Customer ID</label>
-<input name="Customer_ID" required>
+        <div class="card__body">
+          <fieldset class="section">
+            <legend>Identifiers</legend>
+            <div class="grid">
+              <label class="field">
+                <span class="field__label">Order ID <span class="req">*</span></span>
+                <input name="Order_ID" required placeholder="e.g. ORD-1001" />
+              </label>
 
-<label>Date (DD-MM-YYYY)</label>
-<input name="Date" required>
+              <label class="field">
+                <span class="field__label">Customer ID <span class="req">*</span></span>
+                <input name="Customer_ID" required placeholder="e.g. CUST-42" />
+              </label>
 
-<label>Age</label>
-<input type="number" name="Age" required>
+              <label class="field field--wide">
+                <span class="field__label">Date (DD-MM-YYYY) <span class="req">*</span></span>
+                <input name="Date" required placeholder="25-03-2026" inputmode="numeric" />
+              </label>
+            </div>
+          </fieldset>
 
-<label>Gender</label>
-<select name="Gender">
-    <option>Male</option>
-    <option>Female</option>
-</select>
+          <fieldset class="section">
+            <legend>Customer</legend>
+            <div class="grid">
+              <label class="field">
+                <span class="field__label">Age <span class="req">*</span></span>
+                <input type="number" name="Age" required min="0" placeholder="e.g. 28" />
+              </label>
 
-<label>City</label>
-<input name="City" required>
+              <label class="field">
+                <span class="field__label">Gender</span>
+                <select name="Gender">
+                  <option>Male</option>
+                  <option>Female</option>
+                </select>
+              </label>
 
-<label>Product Category</label>
-<select name="Product_Category">
-    <option>Electronics</option>
-    <option>Clothing</option>
-    <option>Home</option>
-</select>
+              <label class="field field--wide">
+                <span class="field__label">City <span class="req">*</span></span>
+                <input name="City" required placeholder="e.g. Mumbai" />
+              </label>
 
-<label>Unit Price</label>
-<input type="number" step="0.01" name="Unit_Price" required>
+              <label class="field field--wide">
+                <span class="field__label">Returning Customer</span>
+                <select name="Is_Returning_Customer">
+                  <option value="1">Yes</option>
+                  <option value="0">No</option>
+                </select>
+              </label>
+            </div>
+          </fieldset>
 
-<label>Quantity</label>
-<input type="number" name="Quantity" required>
+          <fieldset class="section">
+            <legend>Product & payment</legend>
+            <div class="grid">
+              <label class="field field--wide">
+                <span class="field__label">Product Category</span>
+                <select name="Product_Category">
+                  <option>Electronics</option>
+                  <option>Clothing</option>
+                  <option>Home</option>
+                </select>
+              </label>
 
-<label>Discount Amount</label>
-<input type="number" step="0.01" name="Discount_Amount">
+              <label class="field">
+                <span class="field__label">Unit Price <span class="req">*</span></span>
+                <input type="number" step="0.01" name="Unit_Price" required min="0" placeholder="e.g. 499.00" />
+              </label>
 
-<label>Total Amount</label>
-<input type="number" step="0.01" name="Total_Amount" required>
+              <label class="field">
+                <span class="field__label">Quantity <span class="req">*</span></span>
+                <input type="number" name="Quantity" required min="0" placeholder="e.g. 2" />
+              </label>
 
-<label>Payment Method</label>
-<select name="Payment_Method">
-    <option>UPI</option>
-    <option>Card</option>
-    <option>Cash on Delivery</option>
-</select>
+              <label class="field">
+                <span class="field__label">Discount Amount</span>
+                <input type="number" step="0.01" name="Discount_Amount" min="0" placeholder="e.g. 50.00" />
+              </label>
 
-<label>Device Type</label>
-<select name="Device_Type">
-    <option>Mobile</option>
-    <option>Desktop</option>
-</select>
+              <label class="field">
+                <span class="field__label">Total Amount <span class="req">*</span></span>
+                <input type="number" step="0.01" name="Total_Amount" required min="0" placeholder="e.g. 948.00" />
+              </label>
 
-<label>Session Duration (minutes)</label>
-<input type="number" name="Session_Duration_Minutes">
+              <label class="field field--wide">
+                <span class="field__label">Payment Method</span>
+                <select name="Payment_Method">
+                  <option>UPI</option>
+                  <option>Card</option>
+                  <option>Cash on Delivery</option>
+                </select>
+              </label>
+            </div>
+          </fieldset>
 
-<label>Pages Viewed</label>
-<input type="number" name="Pages_Viewed">
+          <fieldset class="section">
+            <legend>Session & delivery</legend>
+            <div class="grid">
+              <label class="field">
+                <span class="field__label">Device Type</span>
+                <select name="Device_Type">
+                  <option>Mobile</option>
+                  <option>Desktop</option>
+                </select>
+              </label>
 
-<label>Returning Customer</label>
-<select name="Is_Returning_Customer">
-    <option value="1">Yes</option>
-    <option value="0">No</option>
-</select>
+              <label class="field">
+                <span class="field__label">Session Duration (minutes)</span>
+                <input type="number" name="Session_Duration_Minutes" min="0" placeholder="e.g. 12" />
+              </label>
 
-<label>Delivery Time (Days)</label>
-<input type="number" name="Delivery_Time_Days">
+              <label class="field">
+                <span class="field__label">Pages Viewed</span>
+                <input type="number" name="Pages_Viewed" min="0" placeholder="e.g. 6" />
+              </label>
 
-<label>Customer Rating (1–5)</label>
-<select name="Customer_Rating">
-    <option>1</option>
-    <option>2</option>
-    <option>3</option>
-    <option>4</option>
-    <option>5</option>
-</select>
+              <label class="field">
+                <span class="field__label">Delivery Time (Days)</span>
+                <input type="number" name="Delivery_Time_Days" min="0" placeholder="e.g. 3" />
+              </label>
 
-<button type="submit">Submit</button>
+              <label class="field field--wide">
+                <span class="field__label">Customer Rating (1–5)</span>
+                <select name="Customer_Rating">
+                  <option>1</option>
+                  <option>2</option>
+                  <option>3</option>
+                  <option>4</option>
+                  <option>5</option>
+                </select>
+              </label>
+            </div>
+          </fieldset>
+        </div>
 
-</form>
+        <div class="card__footer">
+          <div class="muted">
+            Tip: Use consistent IDs and date format to avoid validation failures.
+          </div>
+          <button class="btn btn--primary" type="submit">Submit record</button>
+        </div>
+      </form>
 
-</body>
+      <footer class="footer">
+        <span class="muted">© {{ 2026 }} Shoplytics AI</span>
+      </footer>
+    </main>
+  </body>
 </html>
