@@ -5,10 +5,10 @@ def extract_data():
     try:
         df = pd.read_csv(RAW_DATA_PATH)
 
-        print("=" * 50)
+        print("-" * 50)
         print(f"[EXTRACT] Loaded data shape: {df.shape}")
         print(f"[EXTRACT] Columns: {df.columns.tolist()}")
-        print("=" * 50)
+        print("-" * 50)
 
         return df
 

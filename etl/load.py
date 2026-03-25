@@ -46,9 +46,6 @@ def _write_csv_with_retries(write_fn, target_path: str, *, retries: int = 6, del
 def load_data(df, mode="replace"):
 
     try:
-        # -------------------------
-        # 1. LOAD TO POSTGRESQL
-        # -------------------------
         df.to_sql(
             name="sales_data",
             con=engine,
@@ -58,20 +55,16 @@ def load_data(df, mode="replace"):
 
         print(f"[LOAD] Data loaded into PostgreSQL (mode={mode})")
 
-        # -------------------------
-        # 2. LOAD TO CSV (IMPORTANT)
-        # -------------------------
         if not CLEANED_DATA_PATH:
             raise ValueError("CLEANED_DATA_PATH is not set. Please set it in .env (e.g. data/cleaned_sales.csv).")
 
         _ensure_parent_dir(CLEANED_DATA_PATH)
 
         if mode == "replace":
-            # Batch → overwrite CSV
+   
             _write_csv_with_retries(lambda: df.to_csv(CLEANED_DATA_PATH, index=False), CLEANED_DATA_PATH)
 
         elif mode == "append":
-            # Real-time → append to CSV
             if os.path.exists(CLEANED_DATA_PATH):
                 _write_csv_with_retries(
                     lambda: df.to_csv(CLEANED_DATA_PATH, mode="a", header=False, index=False),

@@ -1,26 +1,14 @@
 import pandas as pd
 import numpy as np
 
-# --------------------------------------------------
-# 🔥 CORE TRANSFORMATION LOGIC (REUSABLE)
-# --------------------------------------------------
 def apply_transformations(df):
 
-    # -------------------------
-    # FIX COLUMN NAMES
-    # -------------------------
     df.columns = df.columns.str.strip()
     df.columns = df.columns.str.replace(" ", "_")
     df.columns = df.columns.str.replace(r"[^\w_]", "", regex=True)
 
-    # -------------------------
-    # DATE
-    # -------------------------
     df["Date"] = pd.to_datetime(df["Date"], dayfirst=True)
 
-    # -------------------------
-    # SALES FEATURES
-    # -------------------------
     df["Total_Sales"] = df["Total_Amount"]
 
     df["Avg_Item_Price"] = df["Total_Amount"] / df["Quantity"]
@@ -31,16 +19,10 @@ def apply_transformations(df):
         df["Discount_Amount"] / (df["Unit_Price"] * df["Quantity"])
     )
 
-    # -------------------------
-    # PROFIT FEATURES
-    # -------------------------
     df["Cost_Price"] = df["Unit_Price"] * 0.7
     df["Profit"] = df["Total_Amount"] - df["Cost_Price"]
     df["Profit_Margin"] = df["Profit"] / df["Total_Amount"]
 
-    # -------------------------
-    # ENGAGEMENT FEATURES
-    # -------------------------
     df["Engagement_Score"] = df["Session_Duration_Minutes"] * df["Pages_Viewed"]
 
     df["Pages_Per_Minute"] = np.where(
@@ -49,14 +31,8 @@ def apply_transformations(df):
         df["Pages_Viewed"] / df["Session_Duration_Minutes"]
     )
 
-    # -------------------------
-    # DELIVERY FEATURES
-    # -------------------------
     df["Is_Delayed"] = (df["Delivery_Time_Days"] > 7).astype(int)
 
-    # -------------------------
-    # FINAL COLUMN ORDER
-    # -------------------------
     final_columns = [
         "Order_ID", "Customer_ID", "Date", "Age", "Gender", "City",
         "Product_Category", "Unit_Price", "Quantity", "Discount_Amount",
@@ -73,14 +49,10 @@ def apply_transformations(df):
 
     return df
 
-
-# --------------------------------------------------
-# 📦 BATCH TRANSFORM (CSV)
-# --------------------------------------------------
 def transform_data(df):
 
     try:
-        # Cleaning
+      
         df.drop_duplicates(inplace=True)
         df.dropna(inplace=True)
 
@@ -94,16 +66,11 @@ def transform_data(df):
         print(f"[TRANSFORM ERROR - BATCH] {e}")
         raise
 
-
-# --------------------------------------------------
-# ⚡ REAL-TIME TRANSFORM (FORM INPUT)
-# --------------------------------------------------
 def transform_single(data: dict):
 
     try:
         df = pd.DataFrame([data])
 
-        # No dropna here (form already controlled)
         df = apply_transformations(df)
 
         print("[TRANSFORM] Single record processed")
