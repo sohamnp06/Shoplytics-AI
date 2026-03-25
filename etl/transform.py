@@ -4,11 +4,25 @@ import numpy as np
 def transform_data(df):
 
     try:
+        # -------------------------
+        # FIX COLUMN NAMES (CRITICAL)
+        # -------------------------
+        df.columns = df.columns.str.strip()
+        df.columns = df.columns.str.replace(" ", "_")
+        df.columns = df.columns.str.replace(r"[^\w_]", "", regex=True)
+
+        # -------------------------
+        # CLEANING
+        # -------------------------
         df.drop_duplicates(inplace=True)
         df.dropna(inplace=True)
 
-        df["Date"] = pd.to_datetime(df["Date"])
+        # Fix date format
+        df["Date"] = pd.to_datetime(df["Date"], dayfirst=True)
 
+        # -------------------------
+        # SALES FEATURES
+        # -------------------------
         df["Total_Sales"] = df["Total_Amount"]
 
         df["Avg_Item_Price"] = df["Total_Amount"] / df["Quantity"]
@@ -19,10 +33,16 @@ def transform_data(df):
             df["Discount_Amount"] / (df["Unit_Price"] * df["Quantity"])
         )
 
+        # -------------------------
+        # PROFIT FEATURES
+        # -------------------------
         df["Cost_Price"] = df["Unit_Price"] * 0.7
         df["Profit"] = df["Total_Amount"] - df["Cost_Price"]
         df["Profit_Margin"] = df["Profit"] / df["Total_Amount"]
 
+        # -------------------------
+        # ENGAGEMENT
+        # -------------------------
         df["Engagement_Score"] = df["Session_Duration_Minutes"] * df["Pages_Viewed"]
 
         df["Pages_Per_Minute"] = np.where(
@@ -31,8 +51,14 @@ def transform_data(df):
             df["Pages_Viewed"] / df["Session_Duration_Minutes"]
         )
 
+        # -------------------------
+        # DELIVERY
+        # -------------------------
         df["Is_Delayed"] = (df["Delivery_Time_Days"] > 7).astype(int)
 
+        # -------------------------
+        # FINAL COLUMNS
+        # -------------------------
         final_columns = [
             "Order_ID", "Customer_ID", "Date", "Age", "Gender", "City",
             "Product_Category", "Unit_Price", "Quantity", "Discount_Amount",

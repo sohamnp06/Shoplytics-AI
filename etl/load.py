@@ -12,7 +12,7 @@ def load_data(df):
         df.to_sql(
             name="sales_data",
             con=engine,
-            if_exists="replace",   
+            if_exists="replace",
             index=False
         )
 
