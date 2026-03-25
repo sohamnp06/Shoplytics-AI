@@ -6,15 +6,32 @@ from etl.load import load_data
 def run_pipeline():
 
     try:
-        df = extract_data()
-        df = transform_data(df)
-        validate_data(df)
-        load_data(df)
+        print("\n🚀 Starting ETL Pipeline...\n")
 
-        print("[PIPELINE] ETL pipeline completed successfully")
+        # -------------------------
+        # EXTRACT
+        # -------------------------
+        df = extract_data()
+
+        # -------------------------
+        # TRANSFORM
+        # -------------------------
+        df = transform_data(df)
+
+        # -------------------------
+        # VALIDATE
+        # -------------------------
+        validate_data(df)
+
+        # -------------------------
+        # LOAD (BATCH → REPLACE)
+        # -------------------------
+        load_data(df, mode="replace")
+
+        print("\n✅ ETL pipeline completed successfully\n")
 
     except Exception as e:
-        print(f"[PIPELINE ERROR] {e}")
+        print(f"\n❌ PIPELINE ERROR: {e}\n")
         raise
 
 
