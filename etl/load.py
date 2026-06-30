@@ -61,7 +61,6 @@ def load_data(df, mode="replace"):
         _ensure_parent_dir(CLEANED_DATA_PATH)
 
         if mode == "replace":
-   
             _write_csv_with_retries(lambda: df.to_csv(CLEANED_DATA_PATH, index=False), CLEANED_DATA_PATH)
 
         elif mode == "append":
