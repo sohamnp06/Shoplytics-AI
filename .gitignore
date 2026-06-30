@@ -13,10 +13,6 @@ env/
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 
-# Data files (IMPORTANT for your project)
-data/
-*.csv
-*.xlsx
 
 # Logs
 *.log
