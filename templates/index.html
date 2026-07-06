@@ -3,213 +3,571 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Shoplytics AI • Sales Data Entry</title>
+    <title>Shoplytics AI • Sales Ingestion</title>
+    <meta
+      name="description"
+      content="Real-time sales data entry portal for Shoplytics AI — records flow directly into PostgreSQL and Power BI."
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}" />
   </head>
 
   <body>
-    <div class="bg"></div>
+    <div class="bg" aria-hidden="true"></div>
 
+    <!-- ── Top navigation bar ─────────────────────────────── -->
     <header class="topbar">
       <div class="container topbar__inner">
         <div class="brand">
           <div class="brand__mark" aria-hidden="true">SA</div>
           <div class="brand__text">
             <div class="brand__name">Shoplytics AI</div>
-            <div class="brand__tag">Sales ingestion • ETL-backed</div>
+            <div class="brand__tag">Sales Ingestion · ETL Pipeline · Power BI</div>
           </div>
         </div>
-        <div class="topbar__hint">Form submit → transform → validate → load</div>
+
+        <nav class="tabs" id="main-tabs" aria-label="Page sections">
+          <button class="tab tab--active" data-tab="entry" id="tab-entry">Data Entry</button>
+          <button class="tab" data-tab="recent" id="tab-recent">Recent Records</button>
+          <button class="tab" data-tab="pipeline" id="tab-pipeline">Pipeline</button>
+        </nav>
       </div>
     </header>
 
     <main class="container main">
-      <section class="hero">
-        <div>
-          <h1>Sales Data Entry</h1>
-          <p class="sub">
-            Enter a single order record. Required fields are marked; optional fields default to 0 where
-            applicable.
-          </p>
+
+      <!-- ── KPI strip ──────────────────────────────────────── -->
+      <section class="kpi-strip" id="kpi-strip" aria-label="Key performance indicators">
+        <div class="kpi-card" id="kpi-records">
+          <div class="kpi-card__label">Total Records</div>
+          <div class="kpi-card__value" id="kpi-val-records">—</div>
         </div>
-        <div class="hero__badge" role="status">
-          <div class="hero__badgeTitle">Status</div>
-          <div class="hero__badgeValue">Ready</div>
+        <div class="kpi-card" id="kpi-revenue">
+          <div class="kpi-card__label">Total Revenue</div>
+          <div class="kpi-card__value" id="kpi-val-revenue">—</div>
+        </div>
+        <div class="kpi-card" id="kpi-profit">
+          <div class="kpi-card__label">Total Profit</div>
+          <div class="kpi-card__value" id="kpi-val-profit">—</div>
+        </div>
+        <div class="kpi-card" id="kpi-rating">
+          <div class="kpi-card__label">Avg Rating</div>
+          <div class="kpi-card__value" id="kpi-val-rating">—</div>
         </div>
       </section>
 
-      {% if message %}
-      {% set is_success = ('✅' in message) %}
-      <div class="alert {{ 'alert--success' if is_success else 'alert--error' }}" role="alert">
-        <div class="alert__icon" aria-hidden="true">{{ '✓' if is_success else '!' }}</div>
-        <div class="alert__content">
-          <div class="alert__title">{{ 'Saved' if is_success else 'Something went wrong' }}</div>
-          <div class="alert__message">{{ message }}</div>
-        </div>
-      </div>
-      {% endif %}
+      <!-- ══════════════════════════════════════════════════════
+           TAB 1 — DATA ENTRY FORM
+      ══════════════════════════════════════════════════════ -->
+      <section class="tab-panel tab-panel--active" id="panel-entry" aria-labelledby="tab-entry">
 
-      <form class="card" action="/submit" method="post">
-        <div class="card__header">
+        <div class="hero">
           <div>
-            <h2>Order details</h2>
-            <p class="muted">All fields map 1:1 to your pipeline input keys.</p>
+            <h1>New Sales Record</h1>
+            <p class="sub">
+              Enter one order record. After submit it is transformed, validated, and
+              written directly to PostgreSQL — visible in Power BI on the next refresh.
+            </p>
           </div>
-          <button class="btn btn--primary" type="submit">Submit record</button>
-        </div>
-
-        <div class="card__body">
-          <fieldset class="section">
-            <legend>Identifiers</legend>
-            <div class="grid">
-              <label class="field">
-                <span class="field__label">Order ID <span class="req">*</span></span>
-                <input name="Order_ID" required placeholder="e.g. ORD-1001" />
-              </label>
-
-              <label class="field">
-                <span class="field__label">Customer ID <span class="req">*</span></span>
-                <input name="Customer_ID" required placeholder="e.g. CUST-42" />
-              </label>
-
-              <label class="field field--wide">
-                <span class="field__label">Date (DD-MM-YYYY) <span class="req">*</span></span>
-                <input name="Date" required placeholder="25-03-2026" inputmode="numeric" />
-              </label>
-            </div>
-          </fieldset>
-
-          <fieldset class="section">
-            <legend>Customer</legend>
-            <div class="grid">
-              <label class="field">
-                <span class="field__label">Age <span class="req">*</span></span>
-                <input type="number" name="Age" required min="0" placeholder="e.g. 28" />
-              </label>
-
-              <label class="field">
-                <span class="field__label">Gender</span>
-                <select name="Gender">
-                  <option>Male</option>
-                  <option>Female</option>
-                </select>
-              </label>
-
-              <label class="field field--wide">
-                <span class="field__label">City <span class="req">*</span></span>
-                <input name="City" required placeholder="e.g. Mumbai" />
-              </label>
-
-              <label class="field field--wide">
-                <span class="field__label">Returning Customer</span>
-                <select name="Is_Returning_Customer">
-                  <option value="1">Yes</option>
-                  <option value="0">No</option>
-                </select>
-              </label>
-            </div>
-          </fieldset>
-
-          <fieldset class="section">
-            <legend>Product & payment</legend>
-            <div class="grid">
-              <label class="field field--wide">
-                <span class="field__label">Product Category</span>
-                <select name="Product_Category">
-                  <option>Electronics</option>
-                  <option>Clothing</option>
-                  <option>Home</option>
-                </select>
-              </label>
-
-              <label class="field">
-                <span class="field__label">Unit Price <span class="req">*</span></span>
-                <input type="number" step="0.01" name="Unit_Price" required min="0" placeholder="e.g. 499.00" />
-              </label>
-
-              <label class="field">
-                <span class="field__label">Quantity <span class="req">*</span></span>
-                <input type="number" name="Quantity" required min="0" placeholder="e.g. 2" />
-              </label>
-
-              <label class="field">
-                <span class="field__label">Discount Amount</span>
-                <input type="number" step="0.01" name="Discount_Amount" min="0" placeholder="e.g. 50.00" />
-              </label>
-
-              <label class="field">
-                <span class="field__label">Total Amount <span class="req">*</span></span>
-                <input type="number" step="0.01" name="Total_Amount" required min="0" placeholder="e.g. 948.00" />
-              </label>
-
-              <label class="field field--wide">
-                <span class="field__label">Payment Method</span>
-                <select name="Payment_Method">
-                  <option>UPI</option>
-                  <option>Card</option>
-                  <option>Cash on Delivery</option>
-                </select>
-              </label>
-            </div>
-          </fieldset>
-
-          <fieldset class="section">
-            <legend>Session & delivery</legend>
-            <div class="grid">
-              <label class="field">
-                <span class="field__label">Device Type</span>
-                <select name="Device_Type">
-                  <option>Mobile</option>
-                  <option>Desktop</option>
-                </select>
-              </label>
-
-              <label class="field">
-                <span class="field__label">Session Duration (minutes)</span>
-                <input type="number" name="Session_Duration_Minutes" min="0" placeholder="e.g. 12" />
-              </label>
-
-              <label class="field">
-                <span class="field__label">Pages Viewed</span>
-                <input type="number" name="Pages_Viewed" min="0" placeholder="e.g. 6" />
-              </label>
-
-              <label class="field">
-                <span class="field__label">Delivery Time (Days)</span>
-                <input type="number" name="Delivery_Time_Days" min="0" placeholder="e.g. 3" />
-              </label>
-
-              <label class="field field--wide">
-                <span class="field__label">Customer Rating (1–5)</span>
-                <select name="Customer_Rating">
-                  <option>1</option>
-                  <option>2</option>
-                  <option>3</option>
-                  <option>4</option>
-                  <option>5</option>
-                </select>
-              </label>
-            </div>
-          </fieldset>
-        </div>
-
-        <div class="card__footer">
-          <div class="muted">
-            Tip: Use consistent IDs and date format to avoid validation failures.
+          <div class="hero__badge" role="status" id="status-badge">
+            <div class="hero__badgeTitle">Pipeline</div>
+            <div class="hero__badgeValue" id="status-badge-val">Ready</div>
           </div>
-          <button class="btn btn--primary" type="submit">Submit record</button>
         </div>
-      </form>
+
+        {% if message %}
+        {% set is_success = ('✅' in message) %}
+        <div
+          class="alert {{ 'alert--success' if is_success else 'alert--error' }}"
+          role="alert"
+          id="submit-alert"
+        >
+          <div class="alert__icon" aria-hidden="true">{{ '✓' if is_success else '!' }}</div>
+          <div class="alert__content">
+            <div class="alert__title">{{ 'Saved' if is_success else 'Something went wrong' }}</div>
+            <div class="alert__message">{{ message }}</div>
+          </div>
+        </div>
+        {% endif %}
+
+        <form class="card" action="/submit" method="post" id="sales-form" novalidate>
+          <div class="card__header">
+            <div>
+              <h2>Order Details</h2>
+              <p class="muted">All fields map 1:1 to the ETL pipeline input keys.</p>
+            </div>
+            <button class="btn btn--primary" type="submit" id="btn-submit">
+              <span class="btn__label">Submit Record</span>
+              <span class="btn__spinner spinner" aria-hidden="true" style="display:none"></span>
+            </button>
+          </div>
+
+          <div class="card__body">
+
+            <!-- Identifiers -->
+            <fieldset class="section">
+              <legend>Identifiers</legend>
+              <div class="grid">
+                <label class="field">
+                  <span class="field__label">Order ID <span class="req">*</span></span>
+                  <input id="f-order-id" name="Order_ID" required placeholder="e.g. ORD-10001" autocomplete="off" />
+                </label>
+
+                <label class="field">
+                  <span class="field__label">Customer ID <span class="req">*</span></span>
+                  <input id="f-customer-id" name="Customer_ID" required placeholder="e.g. CUST-42" autocomplete="off" />
+                </label>
+
+                <label class="field field--wide">
+                  <span class="field__label">Date (DD-MM-YYYY) <span class="req">*</span></span>
+                  <input id="f-date" name="Date" required placeholder="06-07-2026" inputmode="numeric" />
+                </label>
+              </div>
+            </fieldset>
+
+            <!-- Customer -->
+            <fieldset class="section">
+              <legend>Customer</legend>
+              <div class="grid">
+                <label class="field">
+                  <span class="field__label">Age <span class="req">*</span></span>
+                  <input id="f-age" type="number" name="Age" required min="1" max="120" placeholder="e.g. 28" />
+                </label>
+
+                <label class="field">
+                  <span class="field__label">Gender</span>
+                  <select id="f-gender" name="Gender">
+                    <option>Male</option>
+                    <option>Female</option>
+                    <option>Other</option>
+                  </select>
+                </label>
+
+                <label class="field field--wide">
+                  <span class="field__label">City <span class="req">*</span></span>
+                  <input id="f-city" name="City" required placeholder="e.g. Mumbai" />
+                </label>
+
+                <label class="field field--wide">
+                  <span class="field__label">Returning Customer</span>
+                  <select id="f-returning" name="Is_Returning_Customer">
+                    <option value="1">Yes</option>
+                    <option value="0">No</option>
+                  </select>
+                </label>
+              </div>
+            </fieldset>
+
+            <!-- Product & Payment -->
+            <fieldset class="section">
+              <legend>Product &amp; Payment</legend>
+              <div class="grid">
+                <label class="field field--wide">
+                  <span class="field__label">Product Category</span>
+                  <select id="f-category" name="Product_Category">
+                    <option>Electronics</option>
+                    <option>Clothing</option>
+                    <option>Home &amp; Living</option>
+                    <option>Beauty</option>
+                    <option>Sports</option>
+                    <option>Books</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span class="field__label">Unit Price <span class="req">*</span></span>
+                  <input id="f-unit-price" type="number" step="0.01" name="Unit_Price" required min="0" placeholder="e.g. 499.00" />
+                </label>
+
+                <label class="field">
+                  <span class="field__label">Quantity <span class="req">*</span></span>
+                  <input id="f-quantity" type="number" name="Quantity" required min="1" placeholder="e.g. 2" />
+                </label>
+
+                <label class="field">
+                  <span class="field__label">Discount Amount</span>
+                  <input id="f-discount" type="number" step="0.01" name="Discount_Amount" min="0" placeholder="e.g. 50.00" value="0" />
+                </label>
+
+                <label class="field">
+                  <span class="field__label">Total Amount <span class="req">*</span></span>
+                  <input id="f-total" type="number" step="0.01" name="Total_Amount" required min="0" placeholder="e.g. 948.00" />
+                </label>
+
+                <label class="field field--wide">
+                  <span class="field__label">Payment Method</span>
+                  <select id="f-payment" name="Payment_Method">
+                    <option>UPI</option>
+                    <option>Credit Card</option>
+                    <option>Debit Card</option>
+                    <option>Cash on Delivery</option>
+                    <option>Net Banking</option>
+                  </select>
+                </label>
+              </div>
+            </fieldset>
+
+            <!-- Session & Delivery -->
+            <fieldset class="section">
+              <legend>Session &amp; Delivery</legend>
+              <div class="grid">
+                <label class="field">
+                  <span class="field__label">Device Type</span>
+                  <select id="f-device" name="Device_Type">
+                    <option>Mobile</option>
+                    <option>Desktop</option>
+                    <option>Tablet</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span class="field__label">Session Duration (min)</span>
+                  <input id="f-session" type="number" name="Session_Duration_Minutes" min="0" placeholder="e.g. 12" value="0" />
+                </label>
+
+                <label class="field">
+                  <span class="field__label">Pages Viewed</span>
+                  <input id="f-pages" type="number" name="Pages_Viewed" min="0" placeholder="e.g. 6" value="0" />
+                </label>
+
+                <label class="field">
+                  <span class="field__label">Delivery Time (Days)</span>
+                  <input id="f-delivery" type="number" name="Delivery_Time_Days" min="0" placeholder="e.g. 3" value="0" />
+                </label>
+
+                <label class="field field--wide">
+                  <span class="field__label">Customer Rating (1 – 5)</span>
+                  <select id="f-rating" name="Customer_Rating">
+                    <option value="5">5 ⭐⭐⭐⭐⭐</option>
+                    <option value="4">4 ⭐⭐⭐⭐</option>
+                    <option value="3" selected>3 ⭐⭐⭐</option>
+                    <option value="2">2 ⭐⭐</option>
+                    <option value="1">1 ⭐</option>
+                  </select>
+                </label>
+              </div>
+            </fieldset>
+
+          </div><!-- /.card__body -->
+
+          <div class="card__footer">
+            <p class="muted" style="margin:0; font-size:13px;">
+              💡 Use consistent IDs and DD-MM-YYYY dates to avoid validation errors.
+            </p>
+            <button class="btn btn--primary" type="submit">Submit Record</button>
+          </div>
+        </form>
+
+      </section><!-- /#panel-entry -->
+
+
+      <!-- ══════════════════════════════════════════════════════
+           TAB 2 — RECENT RECORDS
+      ══════════════════════════════════════════════════════ -->
+      <section class="tab-panel" id="panel-recent" aria-labelledby="tab-recent" hidden>
+
+        <div class="hero">
+          <div>
+            <h1>Recent Records</h1>
+            <p class="sub">Last 10 rows written to PostgreSQL — live from the database.</p>
+          </div>
+          <button class="btn btn--outline" id="btn-refresh-table" type="button">
+            ↻ Refresh
+          </button>
+        </div>
+
+        <div class="card" id="recent-card">
+          <div class="card__header">
+            <div>
+              <h2>sales_data</h2>
+              <p class="muted">Ordered by Date DESC</p>
+            </div>
+            <span class="badge" id="recent-count">—</span>
+          </div>
+
+          <div class="table-wrap" id="table-wrap">
+            <div class="table-placeholder" id="table-placeholder">
+              <div class="spinner" aria-label="Loading"></div>
+              <p>Fetching records…</p>
+            </div>
+            <table class="data-table" id="data-table" hidden>
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Customer ID</th>
+                  <th>Date</th>
+                  <th>City</th>
+                  <th>Category</th>
+                  <th>Total Amount</th>
+                  <th>Profit</th>
+                  <th>Rating</th>
+                  <th>Delayed</th>
+                </tr>
+              </thead>
+              <tbody id="table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </section><!-- /#panel-recent -->
+
+
+      <!-- ══════════════════════════════════════════════════════
+           TAB 3 — PIPELINE CONTROL
+      ══════════════════════════════════════════════════════ -->
+      <section class="tab-panel" id="panel-pipeline" aria-labelledby="tab-pipeline" hidden>
+
+        <div class="hero">
+          <div>
+            <h1>Pipeline Control</h1>
+            <p class="sub">Manage the batch ETL pipeline and monitor its status.</p>
+          </div>
+        </div>
+
+        <div class="pipeline-grid">
+
+          <!-- Batch ETL card -->
+          <div class="card pipeline-card">
+            <div class="card__header">
+              <div>
+                <h2>Batch ETL Pipeline</h2>
+                <p class="muted">Extract → Transform → Validate → Load (replace)</p>
+              </div>
+              <span class="badge badge--warn">Manual</span>
+            </div>
+            <div class="card__body">
+              <div class="info-box">
+                <span class="info-box__icon" aria-hidden="true">⚠️</span>
+                <div>
+                  <strong>Warning:</strong> Running the batch pipeline replaces the entire
+                  <code>sales_data</code> table with fresh data from
+                  <code>data/SalesData.csv</code>. Any records added via the form since
+                  the last batch run will be overwritten.
+                </div>
+              </div>
+
+              <ul class="step-list">
+                <li class="step"><span class="step__dot step__dot--extract"></span>Extract — read <code>SalesData.csv</code></li>
+                <li class="step"><span class="step__dot step__dot--transform"></span>Transform — clean + feature engineering</li>
+                <li class="step"><span class="step__dot step__dot--validate"></span>Validate — 5 business rules</li>
+                <li class="step"><span class="step__dot step__dot--load"></span>Load — replace PostgreSQL table + export CSV</li>
+              </ul>
+
+              <div id="etl-result" class="etl-result" hidden></div>
+
+              <button class="btn btn--primary btn--full" id="btn-run-etl" type="button">
+                <span class="btn__label">▶ Run Batch ETL</span>
+                <span class="btn__spinner spinner" aria-hidden="true" style="display:none"></span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Architecture card -->
+          <div class="card pipeline-card">
+            <div class="card__header">
+              <div>
+                <h2>Data Flow</h2>
+                <p class="muted">End-to-end architecture</p>
+              </div>
+            </div>
+            <div class="card__body">
+              <div class="arch-flow">
+                <div class="arch-node arch-node--source">📄 SalesData.csv</div>
+                <div class="arch-arrow">↓ extract</div>
+                <div class="arch-node arch-node--etl">⚙️ ETL Pipeline</div>
+                <div class="arch-arrow">↓ transform · validate · load</div>
+                <div class="arch-node arch-node--db">🗄️ PostgreSQL</div>
+                <div class="arch-arrow arch-arrow--split">↙ Flask API &nbsp;&nbsp; Power BI ↘</div>
+                <div class="arch-row">
+                  <div class="arch-node arch-node--flask">🌐 Web UI</div>
+                  <div class="arch-node arch-node--pbi">📊 Dashboard</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /.pipeline-grid -->
+      </section><!-- /#panel-pipeline -->
+
 
       <footer class="footer">
-        <span class="muted">© {{ 2026 }} Shoplytics AI</span>
+        <span class="muted">© 2026 Shoplytics AI — ETL · PostgreSQL · Power BI</span>
+        <span class="muted" id="footer-time"></span>
       </footer>
-    </main>
+
+    </main><!-- /.container -->
+
+    <!-- ─────────────────────────────────────────────────────────
+         JavaScript — tabs, KPI fetch, recent-records fetch, ETL trigger
+    ──────────────────────────────────────────────────────────── -->
+    <script>
+      /* ── Utility ─────────────────────────────────────────── */
+      const fmt = (n) =>
+        n === null || n === undefined || isNaN(n)
+          ? "—"
+          : Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+
+      const fmtCurrency = (n) =>
+        n === null || n === undefined || isNaN(n)
+          ? "—"
+          : "₹" + Number(n).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+
+      /* ── Tabs ────────────────────────────────────────────── */
+      const tabs = document.querySelectorAll(".tab");
+      const panels = document.querySelectorAll(".tab-panel");
+
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          tabs.forEach((t) => t.classList.remove("tab--active"));
+          panels.forEach((p) => { p.classList.remove("tab-panel--active"); p.hidden = true; });
+
+          tab.classList.add("tab--active");
+          const panel = document.getElementById("panel-" + tab.dataset.tab);
+          if (panel) { panel.classList.add("tab-panel--active"); panel.hidden = false; }
+
+          // Lazy-load recent records when that tab is first opened
+          if (tab.dataset.tab === "recent") loadRecentRecords();
+        });
+      });
+
+      /* ── KPI strip ───────────────────────────────────────── */
+      async function loadKPIs() {
+        try {
+          const res = await fetch("/api/stats");
+          const json = await res.json();
+          if (json.status !== "ok") return;
+          const d = json.data;
+          document.getElementById("kpi-val-records").textContent = fmt(d.total_records);
+          document.getElementById("kpi-val-revenue").textContent = fmtCurrency(d.total_revenue);
+          document.getElementById("kpi-val-profit").textContent = fmtCurrency(d.total_profit);
+          document.getElementById("kpi-val-rating").textContent =
+            d.avg_rating ? Number(d.avg_rating).toFixed(2) + " ⭐" : "—";
+        } catch (_) { /* silently ignore */ }
+      }
+
+      /* ── Recent records table ────────────────────────────── */
+      async function loadRecentRecords() {
+        const placeholder = document.getElementById("table-placeholder");
+        const table = document.getElementById("data-table");
+        const tbody = document.getElementById("table-body");
+        const countBadge = document.getElementById("recent-count");
+
+        placeholder.hidden = false;
+        table.hidden = true;
+
+        try {
+          const res = await fetch("/api/recent?limit=10");
+          const json = await res.json();
+
+          placeholder.hidden = true;
+
+          if (json.status !== "ok" || !json.data.length) {
+            placeholder.hidden = false;
+            placeholder.innerHTML = "<p>No records found in PostgreSQL yet.</p>";
+            return;
+          }
+
+          countBadge.textContent = json.count + " rows";
+          tbody.innerHTML = "";
+
+          json.data.forEach((row) => {
+            const delayed = row.Is_Delayed === 1 || row.Is_Delayed === true;
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td><code>${row.Order_ID ?? "—"}</code></td>
+              <td><code>${row.Customer_ID ?? "—"}</code></td>
+              <td>${row.Date ?? "—"}</td>
+              <td>${row.City ?? "—"}</td>
+              <td>${row.Product_Category ?? "—"}</td>
+              <td class="num">${fmtCurrency(row.Total_Amount)}</td>
+              <td class="num">${fmtCurrency(row.Profit)}</td>
+              <td class="num">${row.Customer_Rating ?? "—"}</td>
+              <td class="center">
+                <span class="chip ${delayed ? "chip--warn" : "chip--ok"}">
+                  ${delayed ? "Yes" : "No"}
+                </span>
+              </td>`;
+            tbody.appendChild(tr);
+          });
+
+          table.hidden = false;
+
+        } catch (err) {
+          placeholder.hidden = false;
+          placeholder.innerHTML = `<p style="color:var(--danger)">Error: ${err.message}</p>`;
+        }
+      }
+
+      /* ── Refresh button ──────────────────────────────────── */
+      document.getElementById("btn-refresh-table").addEventListener("click", loadRecentRecords);
+
+      /* ── Form submit spinner ─────────────────────────────── */
+      document.getElementById("sales-form").addEventListener("submit", () => {
+        const btn = document.getElementById("btn-submit");
+        btn.querySelector(".btn__label").style.display = "none";
+        btn.querySelector(".btn__spinner").style.display = "inline-block";
+        btn.disabled = true;
+
+        const badge = document.getElementById("status-badge-val");
+        badge.textContent = "Processing…";
+      });
+
+      /* ── Batch ETL trigger ───────────────────────────────── */
+      document.getElementById("btn-run-etl").addEventListener("click", async () => {
+        const btn = document.getElementById("btn-run-etl");
+        const resultDiv = document.getElementById("etl-result");
+
+        btn.querySelector(".btn__label").style.display = "none";
+        btn.querySelector(".btn__spinner").style.display = "inline-block";
+        btn.disabled = true;
+        resultDiv.hidden = true;
+
+        try {
+          const res = await fetch("/run-etl", { method: "POST" });
+          const json = await res.json();
+
+          resultDiv.hidden = false;
+          resultDiv.className =
+            "etl-result " + (json.status === "success" ? "etl-result--ok" : "etl-result--err");
+          resultDiv.textContent = json.message;
+
+          // Refresh KPIs after successful ETL
+          if (json.status === "success") loadKPIs();
+
+        } catch (err) {
+          resultDiv.hidden = false;
+          resultDiv.className = "etl-result etl-result--err";
+          resultDiv.textContent = "Network error: " + err.message;
+        } finally {
+          btn.querySelector(".btn__label").style.display = "";
+          btn.querySelector(".btn__spinner").style.display = "none";
+          btn.disabled = false;
+        }
+      });
+
+      /* ── Footer clock ────────────────────────────────────── */
+      const footerTime = document.getElementById("footer-time");
+      function tick() {
+        footerTime.textContent = new Date().toLocaleTimeString("en-IN", {
+          hour: "2-digit", minute: "2-digit", second: "2-digit"
+        });
+      }
+      tick();
+      setInterval(tick, 1000);
+
+      /* ── On load ─────────────────────────────────────────── */
+      loadKPIs();
+
+      // If a success message exists, also refresh recent records
+      const alert = document.getElementById("submit-alert");
+      if (alert && alert.classList.contains("alert--success")) {
+        loadRecentRecords();
+      }
+    </script>
   </body>
 </html>

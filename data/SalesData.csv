@@ -17048,3 +17048,6 @@ ORD_005000-1,CUST_05000,22-02-2023,24,Female,Jaipur,Beauty,156.12,1,0.0,Credit C
 ORD_005000-2,CUST_05000,29-06-2023,24,Female,Jaipur,Home & Garden,1065.24,3,0.0,Credit Card,Desktop,17,11,True,5,4,745.668,3
 ORD_005000-3,CUST_05000,29-12-2023,24,Female,Jaipur,Books,47.73,2,8.8,Credit Card,Desktop,13,11,True,12,2,33.411,2
 ORD_005000-4,CUST_05000,19-01-2024,24,Female,Jaipur,Home & Garden,1015.23,4,217.01,Credit Card,Mobile,15,7,True,3,4,710.661,4
+TEST-VERIFY-001,CUST-TEST-01,06-07-2026,28.0,Male,Delhi,Electronics,999.0,2.0,50.0,1948.0,UPI,Mobile,10.0,8.0,True,3.0,5.0
+TEST-VERIFY-001,CUST-TEST-01,06-07-2026,28.0,Male,Delhi,Electronics,999.0,2.0,50.0,1948.0,UPI,Mobile,10.0,8.0,True,3.0,5.0
+ORD_005000-6,CUST_049910,06-07-2026,28.0,Male,Mumbai,Electronics,499.0,2.0,0.0,948.0,UPI,Mobile,6.0,3.0,True,8.0,5.0
