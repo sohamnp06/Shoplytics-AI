@@ -6,6 +6,7 @@ from etl.load import load_data
 
 app = Flask(__name__)
 
+
 def initialize_pipeline():
     try:
         print("\n Running initial ETL pipeline...\n")
