@@ -351,3 +351,20 @@ Open a browser and navigate to `http://127.0.0.1:5000` to submit test transactio
 * **Modular Pipeline Design:** Writing reusable cleaning logic simplifies development and prevents inconsistency between real-time and batch pipelines.
 * **Preventive Governance:** Catching invalid data early in the pipeline prevents reporting errors in downstream dashboards.
 * **Focus on Business Value:** A data pipeline is only useful if it delivers actionable business recommendations to key stakeholders.
+
+---
+
+## 📬 Contact
+
+<div align="center">
+
+**SOHAM**  
+*Data Analyst · Business Intelligence Developer*
+
+[LinkedIn](https://www.linkedin.com) • [GitHub](https://github.com) • [Portfolio](#) • [Email](mailto:email@example.com)
+
+---
+
+*If you found this project insightful, consider giving it a star on GitHub!* ⭐
+
+</div>
