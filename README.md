@@ -1,139 +1,182 @@
-# Shoplytics AI - Real-Time Sales ETL System
+# Shoplytics AI — Real-Time Sales ETL System
 
-Shoplytics AI is a data engineering project that combines **batch ETL** and **real-time form ingestion** in one workflow.  
-It ingests raw sales data, applies transformation + feature engineering, validates quality rules, and stores curated data in both **PostgreSQL** and **CSV**.
+Shoplytics AI is an end-to-end **Data Engineering portfolio project** that simulates a real e-commerce sales ingestion system. It combines **batch ETL** and **real-time web ingestion**, applies **feature engineering**, enforces **data quality rules**, and persists curated data to **PostgreSQL + CSV** for Power BI analytics.
 
-## 1 Project Overview / Architecture
+---
 
-This project has two ingestion paths:
+## Resume-Ready Summary (copy-paste)
 
-- **Batch path (startup):**  
-  `raw CSV -> extract -> transform -> validate -> load -> PostgreSQL + cleaned CSV`
-- **Real-time path (web form):**  
-  `Flask form submit -> transform_single -> validate -> append load -> PostgreSQL + cleaned CSV`
+> Built a production-style sales ETL system using Flask, Pandas, SQLAlchemy, and PostgreSQL with dual ingestion (batch + real-time). Engineered profitability and engagement metrics, enforced validation gates, implemented dual storage (DB + CSV), and connected Power BI for live business intelligence.
 
-### Architecture Diagram
+---
+
+## 1. Project Overview / Architecture
+
+### Two ingestion paths
+
+| Path | Trigger | Flow |
+|---|---|---|
+| **Batch** | `python main.py` or `POST /run-etl` | `Raw Excel/CSV → Extract → Transform → Validate → Load (replace)` |
+| **Real-time** | Flask form `POST /submit` | `Form → Validate → Raw CSV append → Transform → Validate → Load (append)` |
+
+Both paths write to:
+- **PostgreSQL** table `sales_data` (primary source for Power BI)
+- **Cleaned CSV** at `CLEANED_DATA_PATH` (analytics backup / flat-file access)
+
+### Architecture diagram
 
 ```mermaid
 graph TD
-    subgraph Ingestion
-        A[Raw CSV Data] -->|Batch path| B(etl/extract.py)
-        C[Web Form UI] -->|Real-time path| F(app.py /submit)
+    subgraph Sources
+        A[Raw Excel / CSV<br/>data/SalesData.csv]
+        B[Flask Web Form]
     end
 
-    subgraph Processing/ETL
-        B --> D(etl/transform.py)
-        F --> D
-        D --> E(etl/validate.py)
+    subgraph ETL
+        C[extract.py]
+        D[transform.py<br/>Feature Engineering]
+        E[validate.py<br/>Business Rules]
+        F[load.py<br/>Dual Storage]
     end
 
     subgraph Storage
-        E -->|etl/load.py| G[(PostgreSQL DB)]
-        E -->|etl/load.py| H[Cleaned CSV File]
+        G[(PostgreSQL<br/>sales_data)]
+        H[CleanedSalesData.csv]
     end
+
+    subgraph BI
+        I[Power BI Dashboard]
+    end
+
+    A -->|Batch| C
+    B -->|Real-time| D
+    C --> D --> E --> F
+    B -->|raw append| A
+    F --> G
+    F --> H
+    G --> I
 ```
 
 ### End-to-end flow
 
-1. App starts and runs `run_pipeline()` once.
-2. Batch data is read from `RAW_DATA_PATH`.
-3. Data is transformed + engineered.
-4. Validation rules enforce data quality.
-5. Data is loaded to:
-   - PostgreSQL table: `sales_data`
-   - CSV file: `CLEANED_DATA_PATH` (for file-based analytics)
-6. User can submit new records through UI, which go through the same ETL quality gate and are appended.
+1. **Batch ETL** reads raw data from `RAW_DATA_PATH` (`.xlsx` or `.csv`).
+2. Data is cleaned, deduplicated, and feature-engineered.
+3. Validation blocks invalid records before storage.
+4. PostgreSQL table `sales_data` is **replaced**; cleaned CSV is **overwritten**.
+5. **Real-time form** submits a single record → validated → appended to raw CSV → transformed → appended to PostgreSQL + cleaned CSV.
+6. **Power BI** connects to PostgreSQL and refreshes to show latest data.
 
-### API Routes
+### Batch + real-time sync
 
-- **`GET /`**: Renders the `index.html` template containing the real-time data ingestion form.
-- **`POST /submit`**: Accepts new sales records from the UI. It processes the single record by converting fields to correct types, passing it through the transformation and feature engineering layer (`transform_single`), enforcing data quality checks (`validate_data`), and immediately appending the curated record to both the PostgreSQL database and the unified CSV file.
+Form submissions append to the **raw CSV** (`append_raw_csv`). When batch ETL runs again, it reloads from that same raw source — so web-submitted records are **not lost**.
 
-## 2 Key Highlights
+---
 
-- Real-time + batch ingestion in the same system
-- Reusable ETL modules (`extract`, `transform`, `validate`, `load`)
+## 2. Key Highlights
+
+- Real-time + batch ingestion in one system
+- Modular ETL package (`extract`, `transform`, `validate`, `load`, `pipeline`)
 - Feature engineering for analytics-ready outputs
-- Dual storage strategy (**database + CSV**)
-- Input normalization and validation for reliable downstream analysis
+- Dual storage (PostgreSQL + CSV)
+- Centralized SQLAlchemy engine in `config.py`
+- Structured logging (`utils/logger.py`)
+- Duplicate `Order_ID` prevention on real-time inserts
+- Power BI connected to PostgreSQL
 
-### Why This Project Matters (Business View)
+---
 
-In the modern e-commerce landscape, actionable data is extremely important and data latency can result in lost revenue and missed opportunities. Shoplytics AI addresses this by providing a robust, dual-ingestion pipeline:
-- **Immediate Insights:** By processing real-time inputs through the `/submit` route directly into the analytical dataset, business leaders and analysts get up-to-the-minute visibility into sales, profitability, and customer engagement without waiting for nightly batch jobs.
-- **Quality Assured Decisions:** The baked-in validations and automated feature engineering (such as calculating Profit Margin and Engagement Scores on the fly) ensure that the metrics driving business decisions are both trustworthy and immediately actionable.
-- **Flexible Scalability:** Storing curated data in a high-performance relational database (PostgreSQL) concurrent with a unified CSV gives data science and BI teams the flexibility they need—whether they are building dashboard visualizations or training machine learning models on flat files.
+## 3. Tech Stack
 
-## 3 Tech Stack
+| Layer | Technology |
+|---|---|
+| Web framework | Flask |
+| Data processing | Pandas, NumPy |
+| Database | PostgreSQL |
+| ORM / connector | SQLAlchemy, psycopg2-binary |
+| Excel support | openpyxl |
+| Configuration | python-dotenv |
+| BI | Power BI (`.pbix` in `static/dashboard/`) |
+| Testing | pytest |
+| Frontend | Jinja2 + custom CSS |
 
-- **Backend/API:** Flask
-- **Data Processing:** Pandas, NumPy
-- **Database:** PostgreSQL
-- **Database Connector/ORM Layer:** SQLAlchemy
-- **Configuration:** python-dotenv (`.env` based config)
-- **Frontend:** Jinja2 templates + custom CSS
+---
 
-## 4 Feature Engineering (Important)
+## 4. Feature Engineering
 
-The transformation layer generates derived business metrics:
+| Feature | Formula |
+|---|---|
+| `Total_Sales` | `Total_Amount` |
+| `Avg_Item_Price` | `Total_Amount / Quantity` |
+| `Discount_Percentage` | `Discount_Amount / (Unit_Price × Quantity)` |
+| `Cost_Price` | `Unit_Price × 0.70` |
+| `Profit` | `Total_Amount − (Cost_Price × Quantity)` |
+| `Profit_Margin` | `Profit / Total_Amount` |
+| `Engagement_Score` | `Session_Duration_Minutes × Pages_Viewed` |
+| `Pages_Per_Minute` | `Pages_Viewed / Session_Duration_Minutes` |
+| `Is_Delayed` | `1` if `Delivery_Time_Days > 7`, else `0` |
 
-- `Total_Sales = Total_Amount`
-- `Avg_Item_Price = Total_Amount / Quantity`
-- `Discount_Percentage = Discount_Amount / (Unit_Price * Quantity)` (safe-handled for zero denominator)
-- `Cost_Price = Unit_Price * 0.7`
-- `Profit = Total_Amount - Cost_Price`
-- `Profit_Margin = Profit / Total_Amount`
-- `Engagement_Score = Session_Duration_Minutes * Pages_Viewed`
-- `Pages_Per_Minute = Pages_Viewed / Session_Duration_Minutes` (safe-handled for zero duration)
-- `Is_Delayed = Delivery_Time_Days > 7`
+---
 
-These derived fields make the dataset analytics-ready beyond raw transactional columns.
+## 5. Database Details
 
-## 5 Database Details
+| Item | Value |
+|---|---|
+| Database name | `DB_NAME` from `.env` |
+| Table | `sales_data` |
+| Primary key | `Order_ID` (documented in `database/schema.sql`) |
+| Batch load | `if_exists="replace"` |
+| Real-time load | `if_exists="append"` |
+| Stored data | Raw columns + all engineered features |
 
-- **Database source:** `DB_NAME` from `.env`
-- **Table name:** `sales_data`
-- **Load behavior:**
-  - Batch pipeline: `if_exists="replace"` (refresh table)
-  - Real-time form: `if_exists="append"` (add new rows)
-- **Stored columns:** raw fields + engineered fields (profitability, engagement, discount, delay indicators)
+### Manual schema (optional)
 
-## 6 CSV Output Behavior (Dual Storage)
+```bash
+psql -U <user> -d <dbname> -f database/schema.sql
+```
 
-In addition to PostgreSQL loading, transformed data is written to:
+---
 
-- `CLEANED_DATA_PATH` (typically `data/cleaned_sales.csv`)
+## 6. CSV Output Behavior (Dual Storage)
 
-Behavior:
+| File | Purpose | Batch | Real-time |
+|---|---|---|---|
+| `RAW_DATA_PATH` (e.g. `data/SalesData.csv`) | Raw source of truth | Read | Append |
+| `CLEANED_DATA_PATH` (e.g. `data/CleanedSalesData.csv`) | Curated analytics file | Overwrite | Append |
 
-- Batch run overwrites cleaned CSV (`replace`)
-- Real-time form submission appends to the same cleaned CSV (`append`)
-- On Windows file lock (for example, CSV opened in Excel), write is retried and a clear error is raised if lock persists
+Excel (`.xlsx`) is supported for batch extract. Real-time form entries are always appended as CSV rows so batch reload stays in sync.
 
-## 7 Validation Rules (Data Quality)
+---
 
-Validation layer enforces:
+## 7. Validation Rules
 
-- No null values
-- `Quantity > 0`
-- `Total_Amount >= 0`
-- `Unit_Price >= 0`
-- `Customer_Rating` must be in `0-5`
+| Rule | Enforcement |
+|---|---|
+| No null values | `validate_data()` |
+| `Quantity > 0` | batch + single |
+| `Unit_Price >= 0` | batch + single |
+| `Total_Amount >= 0` | batch + single |
+| `Customer_Rating` in 0–5 | batch + single |
+| No duplicate `Order_ID` in batch | `validate_data()` |
+| No duplicate `Order_ID` in DB | `validate_order_id_unique()` |
+| Required fields | `Order_ID`, `Customer_ID`, `Date`, `City` |
 
-This ensures invalid records are blocked before storage.
+Invalid records **never reach PostgreSQL**.
 
-## 8 Error Handling / Edge Cases
+---
 
-Implemented behaviors:
+## 8. Error Handling / Edge Cases
 
-- Empty optional numeric form fields are converted to `0`
-- `Is_Returning_Customer` input is converted from `"1"` / `"0"` to boolean (`True` / `False`)
-- CSV permission errors (Windows lock/read-only) are handled with retries and clear actionable message
-- ETL step errors are surfaced back to UI with explicit error messaging
+- Empty optional numeric fields → converted to `0`
+- `Is_Returning_Customer` → `"1"`/`"0"` converted to `True`/`False`
+- CSV file locked (Excel open) → retries, then warning (PostgreSQL write still succeeds)
+- Duplicate `Order_ID` → blocked with clear UI error
+- Missing raw file → extract tries fallback paths automatically
 
-## 9 Environment Variables (`.env`)
+---
 
-Create a `.env` file in project root with:
+## 9. Environment Variables
+
+Copy `.env.example` to `.env` (your credentials are already configured):
 
 ```env
 DB_USER=your_user
@@ -142,69 +185,127 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=your_database_name
 
-RAW_DATA_PATH=data/raw_sales.csv
-CLEANED_DATA_PATH=data/cleaned_sales.csv
+RAW_DATA_PATH=data/SalesData.csv
+CLEANED_DATA_PATH=data/CleanedSalesData.csv
 ```
 
-## 10 Setup and Run
+Supported raw formats: `.xlsx`, `.xls`, `.csv`
+
+---
+
+## 10. Setup and Run
 
 ```bash
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install flask pandas numpy sqlalchemy python-dotenv psycopg2-binary
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### Run batch ETL only
+
+```bash
+python main.py
+```
+
+### Run Flask app (real-time + on-demand batch)
+
+```bash
 python app.py
 ```
 
-Open:
+Open: `http://127.0.0.1:5000`
 
-- `http://127.0.0.1:5000`
+### API routes
 
-## 11 Testing / Verification
+| Method | Route | Purpose |
+|---|---|---|
+| GET | `/` | Data entry form |
+| POST | `/submit` | Real-time single-record ingestion |
+| POST | `/run-etl` | Trigger batch ETL on demand |
+| GET | `/api/recent` | Last N records (JSON) |
+| GET | `/api/stats` | KPI summary (JSON) |
 
-### Verify web insert worked
+---
 
-- Submit one new record from UI
-- Confirm success message in app
+## 11. Testing / Verification
 
-### Verify PostgreSQL insert
+### Run unit tests
 
-Run in SQL client:
+```bash
+pytest tests/ -v
+```
+
+### Verify PostgreSQL
 
 ```sql
 SELECT COUNT(*) FROM sales_data;
-SELECT * FROM sales_data ORDER BY "Date" DESC LIMIT 5;
+
 SELECT "Order_ID", "Profit", "Engagement_Score", "Discount_Percentage"
 FROM sales_data
 ORDER BY "Date" DESC
 LIMIT 10;
 ```
 
+### Verify real-time insert
+
+1. Submit a record from the web form
+2. Confirm success message
+3. Re-run the SQL above — new row should appear
+4. Refresh Power BI dataset
+
 ### Verify CSV append
 
-- Open `data/cleaned_sales.csv`
-- Confirm a new row is appended after each successful form submission
+Open `data/CleanedSalesData.csv` — a new row should appear after each successful submission.
 
-## 12 Project Structure
+---
 
-- `app.py` - Flask app routes and startup ETL trigger
-- `config.py` - environment variable loading and path/DB configuration
-- `etl/extract.py` - CSV extraction
-- `etl/transform.py` - cleaning + feature engineering
-- `etl/validate.py` - data quality checks
-- `etl/load.py` - PostgreSQL + CSV loading
-- `templates/index.html` - web form UI
-- `static/app.css` - professional UI styling
+## 12. Project Structure
 
-## 13 Future Improvements
+```
+Shoplytics-AI/
+├── app.py                  # Flask routes + real-time ingestion
+├── main.py                 # Batch ETL entry point
+├── config.py               # .env config + shared SQLAlchemy engine
+├── requirements.txt
+├── .env.example
+├── README.md
+├── data/
+│   ├── SalesData.csv           # Raw source (batch input + form append)
+│   ├── raw_sales.xlsx          # Excel source (optional)
+│   └── CleanedSalesData.csv    # Curated output
+├── database/
+│   └── schema.sql              # DDL with constraints
+├── etl/
+│   ├── extract.py              # Excel/CSV extraction
+│   ├── transform.py            # Cleaning + feature engineering
+│   ├── validate.py             # Business rules + duplicate checks
+│   ├── load.py                 # PostgreSQL + CSV dual storage
+│   ├── pipeline.py             # Batch orchestration
+│   └── seed_from_cleaned.py    # One-off DB seed utility
+├── tests/
+│   └── test_etl.py             # Unit tests
+├── templates/
+│   └── index.html
+├── static/
+│   ├── app.css
+│   └── dashboard/              # Power BI files
+└── utils/
+    └── logger.py               # Structured logging
+```
 
-- Add Streamlit/Power BI dashboard on top of curated dataset
-- Add anomaly detection or sales forecasting model
-- Add API endpoints for programmatic ingestion
-- Add Docker + cloud deployment (Render/AWS/Azure)
-- Add unit tests and CI pipeline
+---
 
-## 14 Resume-Ready Description
+## 13. Future Improvements
 
-Built a real-time + batch ETL sales ingestion system using Flask, Pandas, SQLAlchemy, and PostgreSQL.  
-Engineered analytics features (Profit, Discount %, Engagement Score), applied validation gates, and implemented dual persistence to PostgreSQL and curated CSV for reliable downstream analysis.
+- Automated Power BI dataset refresh (Power BI REST API)
+- Streamlit or embedded analytics dashboard
+- Sales forecasting / anomaly detection ML model
+- Docker + cloud deployment (Render / AWS / Azure)
+- CI/CD pipeline with GitHub Actions
+- API authentication for `/run-etl` admin endpoint
 
+---
+
+## 14. Why This Project Matters
+
+In e-commerce, delayed or dirty data leads to bad decisions. Shoplytics AI demonstrates how a Data Engineer builds a reliable ingestion layer: validate early, engineer features once, store in both relational DB and flat files, and serve BI tools from a single source of truth.

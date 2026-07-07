@@ -2,8 +2,8 @@
 load.py
 -------
 Handles all write operations:
-  - load_data()       → PostgreSQL + CleanedSalesData.csv  (batch replace or append)
-  - append_raw_csv()  → SalesData.csv  (raw record, pre-transformation)
+  - load_data()       → PostgreSQL + cleaned CSV  (batch replace or append)
+  - append_raw_csv()  → raw source file           (pre-transformation append)
 """
 
 import os
@@ -11,13 +11,14 @@ import stat
 import time
 
 import pandas as pd
-from sqlalchemy import create_engine, Integer, Boolean
+from sqlalchemy import text
 
-from config import DB_URL, CLEANED_DATA_PATH, RAW_DATA_PATH
+from config import CLEANED_DATA_PATH, RAW_DATA_PATH, engine
+from etl.dtypes import PG_DTYPES, coerce_dataframe_for_pg, parse_bool
+from utils.logger import setup_logger
 
-engine = create_engine(DB_URL)
+logger = setup_logger("etl.load")
 
-# Columns that exist in SalesData.csv (raw, before feature engineering)
 _RAW_COLUMNS = [
     "Order_ID", "Customer_ID", "Date", "Age", "Gender", "City",
     "Product_Category", "Unit_Price", "Quantity", "Discount_Amount",
@@ -26,19 +27,6 @@ _RAW_COLUMNS = [
     "Is_Returning_Customer", "Delivery_Time_Days", "Customer_Rating",
 ]
 
-# Explicit SQLAlchemy dtype overrides for columns where pandas dtype inference
-# is unreliable on single-row DataFrames:
-#   Is_Delayed            → was BOOLEAN (pandas bool8 inference), now enforced INTEGER
-#   Is_Returning_Customer → stored as BOOLEAN in PostgreSQL
-_SQL_DTYPES = {
-    "Is_Delayed": Integer(),
-    "Is_Returning_Customer": Boolean(),
-}
-
-
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
 
 def _ensure_parent_dir(path: str) -> None:
     parent = os.path.dirname(path)
@@ -50,7 +38,7 @@ def _try_clear_readonly(path: str) -> None:
     try:
         if os.path.exists(path):
             os.chmod(path, stat.S_IWRITE)
-    except Exception:
+    except OSError:
         pass
 
 
@@ -74,118 +62,152 @@ def _write_csv_with_retries(
     ) from last_err
 
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
+def sync_cleaned_csv_from_db() -> None:
+    """Rebuild cleaned CSV from PostgreSQL so it matches the database exactly.
 
-def append_raw_csv(data: dict) -> None:
-    """Append a single raw record to SalesData.csv (pre-transformation).
-
-    Only the original input columns are written — no engineered features.
-    This preserves the raw data trail exactly as the user entered it.
-
-    Args:
-        data: Dict from the Flask form (numeric fields already cast to float).
+    Used as a fallback when incremental CSV append fails (e.g. file open in Excel)
+    and to keep Power BI CSV sources in sync with PostgreSQL.
     """
-    if not RAW_DATA_PATH:
-        print("[LOAD] RAW_DATA_PATH not set — skipping raw CSV append.")
+    if not CLEANED_DATA_PATH:
+        logger.warning("CLEANED_DATA_PATH not set — skipping CSV sync.")
         return
 
     try:
-        # Pick only the raw columns; fill missing keys with empty string
-        row = {col: data.get(col, "") for col in _RAW_COLUMNS}
-        df_raw = pd.DataFrame([row])
+        _ensure_parent_dir(CLEANED_DATA_PATH)
+        with engine.connect() as conn:
+            df = pd.read_sql(text('SELECT * FROM sales_data'), conn)
 
-        _ensure_parent_dir(RAW_DATA_PATH)
+        if "Date" in df.columns:
+            df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
 
-        if os.path.exists(RAW_DATA_PATH):
-            _write_csv_with_retries(
-                lambda: df_raw.to_csv(RAW_DATA_PATH, mode="a", header=False, index=False),
-                RAW_DATA_PATH,
-            )
-        else:
-            # First-ever write — include the header
-            _write_csv_with_retries(
-                lambda: df_raw.to_csv(RAW_DATA_PATH, index=False),
-                RAW_DATA_PATH,
-            )
-
-        print(f"[LOAD] Raw record appended to {RAW_DATA_PATH}")
+        _write_csv_with_retries(
+            lambda: df.to_csv(CLEANED_DATA_PATH, index=False),
+            CLEANED_DATA_PATH,
+        )
+        logger.info(
+            "Synced cleaned CSV from PostgreSQL -> %s (%d rows)",
+            CLEANED_DATA_PATH,
+            len(df),
+        )
 
     except Exception as e:
-        print(f"[LOAD ERROR - RAW CSV] {e}")
+        logger.error("Cleaned CSV sync from PostgreSQL failed: %s", e)
+        raise
+
+
+def append_raw_csv(data: dict) -> None:
+    """Append a single raw record to the raw source CSV (pre-transformation).
+
+    Real-time form submissions are always written as CSV rows so the batch
+    pipeline can reload the full dataset (including web entries) on demand.
+    """
+    raw_csv_path = RAW_DATA_PATH
+    if raw_csv_path.lower().endswith((".xlsx", ".xls")):
+        raw_csv_path = str(
+            os.path.join(os.path.dirname(raw_csv_path), "raw_sales.csv")
+        )
+
+    if not raw_csv_path:
+        logger.warning("RAW_DATA_PATH not set — skipping raw CSV append.")
+        return
+
+    try:
+        row = {col: data.get(col, "") for col in _RAW_COLUMNS}
+        # Normalise bool for raw CSV consistency (True/False, not "1"/"0")
+        if "Is_Returning_Customer" in row:
+            row["Is_Returning_Customer"] = parse_bool(row["Is_Returning_Customer"])
+        df_raw = pd.DataFrame([row])
+
+        _ensure_parent_dir(raw_csv_path)
+
+        if os.path.exists(raw_csv_path):
+            _write_csv_with_retries(
+                lambda: df_raw.to_csv(raw_csv_path, mode="a", header=False, index=False),
+                raw_csv_path,
+            )
+        else:
+            _write_csv_with_retries(
+                lambda: df_raw.to_csv(raw_csv_path, index=False),
+                raw_csv_path,
+            )
+
+        logger.info("Raw record appended to %s", raw_csv_path)
+
+    except Exception as e:
+        logger.error("Raw CSV append failed: %s", e)
         raise
 
 
 def load_data(df: pd.DataFrame, mode: str = "replace") -> None:
-    """Write transformed DataFrame to PostgreSQL and CleanedSalesData.csv.
+    """Write transformed DataFrame to PostgreSQL and cleaned CSV.
 
-    PostgreSQL is the primary target and always treated as critical.
-    CSV export is best-effort — a locked file raises a WARNING in logs
-    but does NOT roll back the successful PostgreSQL write.
-
-    Args:
-        df:   Transformed, validated DataFrame.
-        mode: 'replace' (batch) or 'append' (real-time single record).
+    PostgreSQL is the primary target. CSV export is best-effort on append.
     """
-    # ------------------------------------------------------------------
-    # Ensure Is_Delayed is int64 before insert.
-    # Prevents psycopg2.errors.DatatypeMismatch on single-row DataFrames
-    # where SQLAlchemy can incorrectly infer BOOLEAN from a bool8 column.
-    # ------------------------------------------------------------------
-    if "Is_Delayed" in df.columns:
-        df["Is_Delayed"] = df["Is_Delayed"].astype("int64")
+    df = coerce_dataframe_for_pg(df)
 
-    # ── Step A: Write to PostgreSQL (critical — raises on failure) ──────
     try:
         df.to_sql(
             name="sales_data",
             con=engine,
             if_exists=mode,
             index=False,
-            dtype=_SQL_DTYPES,
+            dtype=PG_DTYPES,
         )
-        print(f"[LOAD] PostgreSQL write OK (mode={mode}, rows={len(df)})")
+        logger.info("PostgreSQL write OK (mode=%s, rows=%d)", mode, len(df))
 
     except Exception as e:
-        print(f"[LOAD ERROR - PostgreSQL] {e}")
-        raise   # Re-raise: DB failure is critical
+        logger.error("PostgreSQL write failed: %s", e)
+        raise
 
-    # ── Step B: Write to CleanedSalesData.csv (best-effort) ─────────────
     if not CLEANED_DATA_PATH:
-        print("[LOAD WARNING] CLEANED_DATA_PATH not set — skipping CSV export.")
+        logger.warning("CLEANED_DATA_PATH not set — skipping CSV export.")
         return
+
+    df_csv = df.copy()
+    if "Date" in df_csv.columns:
+        df_csv["Date"] = pd.to_datetime(df_csv["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
 
     try:
         _ensure_parent_dir(CLEANED_DATA_PATH)
 
         if mode == "replace":
             _write_csv_with_retries(
-                lambda: df.to_csv(CLEANED_DATA_PATH, index=False),
+                lambda: df_csv.to_csv(CLEANED_DATA_PATH, index=False),
                 CLEANED_DATA_PATH,
             )
         elif mode == "append":
             if os.path.exists(CLEANED_DATA_PATH):
                 _write_csv_with_retries(
-                    lambda: df.to_csv(CLEANED_DATA_PATH, mode="a", header=False, index=False),
+                    lambda: df_csv.to_csv(
+                        CLEANED_DATA_PATH, mode="a", header=False, index=False
+                    ),
                     CLEANED_DATA_PATH,
                 )
             else:
                 _write_csv_with_retries(
-                    lambda: df.to_csv(CLEANED_DATA_PATH, index=False),
+                    lambda: df_csv.to_csv(CLEANED_DATA_PATH, index=False),
                     CLEANED_DATA_PATH,
                 )
 
-        print(f"[LOAD] CleanedSalesData.csv write OK → {CLEANED_DATA_PATH}")
+        logger.info("Cleaned CSV write OK -> %s", CLEANED_DATA_PATH)
 
     except PermissionError as e:
-        # File is locked (e.g. open in Excel) — log a warning but do NOT fail.
-        # PostgreSQL already has the record; CSV can be re-synced later.
-        print(
-            f"[LOAD WARNING] Could not write CleanedSalesData.csv (file locked): {e}\n"
-            f"  → PostgreSQL write succeeded. Close the CSV in Excel and it will "
-            f"    update automatically on the next submission."
+        logger.warning(
+            "Cleaned CSV append failed (file likely open in Excel): %s. "
+            "Rebuilding cleaned CSV from PostgreSQL.",
+            e,
         )
+        try:
+            sync_cleaned_csv_from_db()
+        except Exception as sync_err:
+            logger.error(
+                "PostgreSQL write succeeded but cleaned CSV sync also failed: %s",
+                sync_err,
+            )
+            raise PermissionError(
+                f"PostgreSQL updated but cleaned CSV could not be synced. "
+                f"Close '{CLEANED_DATA_PATH}' in Excel, then retry."
+            ) from sync_err
     except Exception as e:
-        print(f"[LOAD ERROR - CSV] {e}")
+        logger.error("Cleaned CSV write failed: %s", e)
         raise

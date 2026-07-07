@@ -1,33 +1,33 @@
 -- =============================================================
 -- Shoplytics AI — PostgreSQL DDL
 -- Table: sales_data
--- 
--- This schema is auto-applied by SQLAlchemy (via pandas.to_sql).
--- This file exists for documentation and manual reproducibility.
 --
--- To recreate the table manually:
---   psql -U postgres -d sales_db -f database/schema.sql
+-- Auto-created by pandas.to_sql on first load.
+-- This file is for documentation and manual reproducibility.
+--
+-- Apply manually:
+--   psql -U <user> -d <dbname> -f database/schema.sql
 -- =============================================================
 
 DROP TABLE IF EXISTS sales_data;
 
 CREATE TABLE sales_data (
     -- ── Identifiers ───────────────────────────────────────────
-    "Order_ID"                  TEXT,
-    "Customer_ID"               TEXT,
-    "Date"                      TIMESTAMP,
+    "Order_ID"                  TEXT        NOT NULL,
+    "Customer_ID"               TEXT        NOT NULL,
+    "Date"                      DATE        NOT NULL,
 
     -- ── Customer Demographics ──────────────────────────────────
     "Age"                       DOUBLE PRECISION,
     "Gender"                    TEXT,
-    "City"                      TEXT,
+    "City"                      TEXT        NOT NULL,
 
     -- ── Product & Transaction ──────────────────────────────────
     "Product_Category"          TEXT,
-    "Unit_Price"                DOUBLE PRECISION,
-    "Quantity"                  DOUBLE PRECISION,
+    "Unit_Price"                DOUBLE PRECISION  NOT NULL,
+    "Quantity"                  DOUBLE PRECISION  NOT NULL,
     "Discount_Amount"           DOUBLE PRECISION,
-    "Total_Amount"              DOUBLE PRECISION,
+    "Total_Amount"              DOUBLE PRECISION  NOT NULL,
     "Payment_Method"            TEXT,
 
     -- ── Session Behaviour ─────────────────────────────────────
@@ -41,18 +41,24 @@ CREATE TABLE sales_data (
     "Customer_Rating"           DOUBLE PRECISION,
 
     -- ── Engineered Features ───────────────────────────────────
-    "Total_Sales"               DOUBLE PRECISION,   -- alias for Total_Amount
-    "Avg_Item_Price"            DOUBLE PRECISION,   -- Total_Amount / Quantity
-    "Discount_Percentage"       DOUBLE PRECISION,   -- Discount_Amount / (Unit_Price * Quantity)
-    "Cost_Price"                DOUBLE PRECISION,   -- Unit_Price * 0.70
-    "Profit"                    DOUBLE PRECISION,   -- Total_Amount - (Cost_Price * Quantity)
-    "Profit_Margin"             DOUBLE PRECISION,   -- Profit / Total_Amount
-    "Engagement_Score"          DOUBLE PRECISION,   -- Session_Duration_Minutes * Pages_Viewed
-    "Pages_Per_Minute"          DOUBLE PRECISION,   -- Pages_Viewed / Session_Duration_Minutes
-    "Is_Delayed"                INTEGER             -- 1 if Delivery_Time_Days > 7, else 0
+    "Total_Sales"               DOUBLE PRECISION,
+    "Avg_Item_Price"            DOUBLE PRECISION,
+    "Discount_Percentage"       DOUBLE PRECISION,
+    "Cost_Price"                DOUBLE PRECISION,
+    "Profit"                    DOUBLE PRECISION,
+    "Profit_Margin"             DOUBLE PRECISION,
+    "Engagement_Score"          DOUBLE PRECISION,
+    "Pages_Per_Minute"          DOUBLE PRECISION,
+    "Is_Delayed"                INTEGER,
+
+    -- ── Constraints ───────────────────────────────────────────
+    CONSTRAINT pk_sales_order_id PRIMARY KEY ("Order_ID"),
+    CONSTRAINT chk_quantity_positive CHECK ("Quantity" > 0),
+    CONSTRAINT chk_unit_price_non_negative CHECK ("Unit_Price" >= 0),
+    CONSTRAINT chk_total_amount_non_negative CHECK ("Total_Amount" >= 0),
+    CONSTRAINT chk_rating_range CHECK ("Customer_Rating" >= 0 AND "Customer_Rating" <= 5)
 );
 
--- Index for common filter operations in Power BI
 CREATE INDEX IF NOT EXISTS idx_sales_date     ON sales_data ("Date");
 CREATE INDEX IF NOT EXISTS idx_sales_category ON sales_data ("Product_Category");
 CREATE INDEX IF NOT EXISTS idx_sales_city     ON sales_data ("City");

@@ -2,7 +2,7 @@
 seed_from_cleaned.py
 --------------------
 One-off utility that wipes the existing 'sales_data' table in PostgreSQL
-and reloads it fresh from data/CleanedSalesData.csv.
+and reloads it fresh from the cleaned CSV.
 
 Run with:
     python -m etl.seed_from_cleaned
@@ -11,35 +11,38 @@ or directly:
 """
 
 import pandas as pd
-from sqlalchemy import create_engine, text
-from config import DB_URL, CLEANED_DATA_PATH
+from sqlalchemy import text
+
+from config import CLEANED_DATA_PATH, engine
+from utils.logger import setup_logger
+
+logger = setup_logger("etl.seed")
 
 
 def seed():
-    print("\n[SEED] Starting fresh database seed from CleanedSalesData.csv...\n")
+    logger.info("Starting fresh database seed from cleaned CSV.")
 
-    # 1. Read the cleaned CSV
-    print(f"[SEED] Reading CSV: {CLEANED_DATA_PATH}")
+    logger.info("Reading CSV: %s", CLEANED_DATA_PATH)
     df = pd.read_csv(CLEANED_DATA_PATH)
-    print(f"[SEED] Loaded {len(df):,} rows × {len(df.columns)} columns")
+    logger.info("Loaded %d rows x %d columns", len(df), len(df.columns))
 
-    # 2. Connect and drop existing table data
-    engine = create_engine(DB_URL)
     with engine.connect() as conn:
         conn.execute(text("DROP TABLE IF EXISTS sales_data CASCADE"))
         conn.commit()
-    print("[SEED] Old 'sales_data' table dropped (if it existed)")
+    logger.info("Old 'sales_data' table dropped (if it existed)")
 
-    # 3. Load the fresh data  (mode="replace" creates the table fresh)
     df.to_sql(
         name="sales_data",
         con=engine,
         if_exists="replace",
         index=False,
-        chunksize=500,   # avoids memory spikes for large files
+        chunksize=500,
     )
-    print(f"[SEED] SUCCESS: {len(df):,} rows loaded into 'sales_data' table successfully")
-    print(f"[SEED] Columns in DB: {df.columns.tolist()}\n")
+    logger.info(
+        "SUCCESS: %d rows loaded into 'sales_data'. Columns: %s",
+        len(df),
+        df.columns.tolist(),
+    )
 
 
 if __name__ == "__main__":

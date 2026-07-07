@@ -16,11 +16,14 @@ from flask import Flask, request, render_template, jsonify
 import pandas as pd
 from sqlalchemy import text
 
-from config import DB_URL
+from config import engine
 from etl.transform import transform_single
-from etl.validate import validate_data, validate_single
-from etl.load import load_data, append_raw_csv, engine
+from etl.validate import validate_data, validate_single, validate_order_id_unique
+from etl.load import load_data, append_raw_csv, sync_cleaned_csv_from_db
 from etl.pipeline import run_pipeline
+from utils.logger import setup_logger
+
+logger = setup_logger("app")
 
 app = Flask(__name__)
 
@@ -74,8 +77,9 @@ def submit():
 
         # Pre-validation (field-level, before transformation)
         validate_single(data)
+        validate_order_id_unique(data["Order_ID"])
 
-        # ── Step 1: Append raw record to SalesData.csv (pre-transformation) ──
+        # ── Step 1: Append raw record to raw source CSV (pre-transformation) ──
         # Keep a raw copy so we save the original date string and input values.
         append_raw_csv(data)
 
@@ -88,16 +92,23 @@ def submit():
         # ── Step 4: Append to PostgreSQL + CleanedSalesData.csv ──────────────
         load_data(df, mode="append")
 
+        # Keep cleaned CSV identical to PostgreSQL (important for Power BI CSV sources)
+        try:
+            sync_cleaned_csv_from_db()
+        except Exception as sync_err:
+            logger.warning("Post-submit CSV sync failed: %s", sync_err)
+
         return render_template(
             "index.html",
             message=(
                 "✅ Data inserted successfully! "
-                "Record appended to SalesData.csv, CleanedSalesData.csv, and PostgreSQL. "
-                "Refresh Power BI to see the update."
+                "Saved to PostgreSQL and CSV. "
+                "In Power BI Desktop press Refresh (or use DirectQuery) to see the new record."
             ),
         )
 
     except Exception as e:
+        logger.error("Submit failed: %s", e)
         return render_template("index.html", message=f"❌ Error: {str(e)}")
 
 
@@ -109,8 +120,8 @@ def submit():
 def run_etl():
     """Trigger the full batch ETL pipeline (extract → transform → validate → replace).
 
-    WARNING: This replaces the entire sales_data table.
-    Use only when you want to reload data from the raw CSV.
+    Reloads PostgreSQL from the raw source file (Excel or CSV), including
+    records previously submitted through the web form.
     """
     try:
         run_pipeline()

@@ -3,20 +3,27 @@ validate.py
 -----------
 Business-rule validation for both batch and single-record ingestion.
 
-Batch path:  validate_data(df)   → raises ValueError on any violation
-Real-time:   validate_single(d)  → raises ValueError with a clear field-level message
+Batch path:  validate_data(df)              → raises ValueError on any violation
+Real-time:   validate_single(d)             → field-level checks before transform
+             validate_order_id_unique(id)   → prevents duplicate inserts in DB
 """
+
+from sqlalchemy import text
+
+from config import engine
+from utils.logger import setup_logger
+
+logger = setup_logger("etl.validate")
 
 
 def validate_data(df):
-    """Validate an entire DataFrame against all business rules.
-
-    Raises ValueError immediately on the first violation so that
-    invalid data never reaches PostgreSQL.
-    """
+    """Validate an entire DataFrame against all business rules."""
     try:
         if df.isnull().sum().sum() > 0:
             raise ValueError("Missing values found in one or more columns.")
+
+        if df["Order_ID"].duplicated().any():
+            raise ValueError("Duplicate Order_ID values found in batch data.")
 
         if (df["Quantity"] <= 0).any():
             raise ValueError("Quantity must be greater than 0.")
@@ -30,34 +37,22 @@ def validate_data(df):
         if (df["Customer_Rating"] < 0).any() or (df["Customer_Rating"] > 5).any():
             raise ValueError("Customer Rating must be between 0 and 5.")
 
-        print("[VALIDATE] Batch validation passed.")
+        logger.info("Batch validation passed.")
         return True
 
     except Exception as e:
-        print(f"[VALIDATE ERROR] {e}")
+        logger.error("Batch validation failed: %s", e)
         raise
 
 
 def validate_single(data: dict):
-    """Validate a single raw record (dict from the Flask form).
-
-    Performs field-level checks before any transformation so the user
-    gets a meaningful error message in the web UI.
-
-    Args:
-        data: Raw dict from request.form
-
-    Raises:
-        ValueError: with a human-readable message on the first failed rule.
-    """
+    """Validate a single raw record (dict from the Flask form)."""
     errors = []
 
-    # Required string identifiers
     for field in ("Order_ID", "Customer_ID", "Date", "City"):
-        if not data.get(field, "").strip():
+        if not str(data.get(field, "")).strip():
             errors.append(f"'{field}' is required and cannot be blank.")
 
-    # Numeric range checks (values already cast to float by app.py)
     try:
         qty = float(data.get("Quantity", 0))
         if qty <= 0:
@@ -89,4 +84,29 @@ def validate_single(data: dict):
     if errors:
         raise ValueError(" | ".join(errors))
 
-    print("[VALIDATE] Single-record pre-validation passed.")
+    logger.info("Single-record pre-validation passed.")
+
+
+def validate_order_id_unique(order_id: str) -> None:
+    """Ensure Order_ID does not already exist in PostgreSQL."""
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(
+                text('SELECT 1 FROM sales_data WHERE "Order_ID" = :oid LIMIT 1'),
+                {"oid": order_id},
+            )
+            if result.fetchone():
+                raise ValueError(
+                    f"Order ID '{order_id}' already exists. Use a unique Order ID."
+                )
+        logger.info("Order_ID '%s' is unique.", order_id)
+
+    except ValueError:
+        raise
+    except Exception as e:
+        err = str(e).lower()
+        if "does not exist" in err or "undefinedtable" in err:
+            logger.info("sales_data table not found — skipping duplicate check.")
+            return
+        logger.error("Duplicate check failed: %s", e)
+        raise

@@ -10,6 +10,10 @@ Real-time:   transform_single(data)  → builds a 1-row DataFrame and engineers 
 import pandas as pd
 import numpy as np
 
+from utils.logger import setup_logger
+
+logger = setup_logger("etl.transform")
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -23,11 +27,31 @@ def _normalise_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _normalise_raw_types(df: pd.DataFrame) -> pd.DataFrame:
+    """Coerce raw CSV/Excel string columns to proper types before feature engineering."""
+    from etl.dtypes import parse_bool
+
+    if "Is_Returning_Customer" in df.columns:
+        df["Is_Returning_Customer"] = df["Is_Returning_Customer"].map(parse_bool)
+
+    numeric_cols = [
+        "Age", "Unit_Price", "Quantity", "Discount_Amount", "Total_Amount",
+        "Session_Duration_Minutes", "Pages_Viewed", "Delivery_Time_Days",
+        "Customer_Rating",
+    ]
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    return df
+
+
 def _engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     """Apply all feature engineering steps in-place and return the DataFrame."""
 
-    # Parse date — dayfirst handles DD-MM-YYYY format from the web form
-    df["Date"] = pd.to_datetime(df["Date"], dayfirst=True)
+    # Parse date — dayfirst handles DD-MM-YYYY; keep date-only (no time)
+    from etl.dtypes import normalize_date_series
+    df["Date"] = normalize_date_series(df["Date"])
 
     # ----- Financial features -----
     df["Total_Sales"] = df["Total_Amount"]
@@ -106,15 +130,16 @@ def transform_data(df: pd.DataFrame) -> pd.DataFrame:
         df = df.dropna()
 
         df = _normalise_columns(df)
+        df = _normalise_raw_types(df)
         df = _engineer_features(df)
 
         df = df[_FINAL_COLUMNS]
 
-        print(f"[TRANSFORM] Batch completed — shape: {df.shape}")
+        logger.info("Batch completed — shape: %s", df.shape)
         return df
 
     except Exception as e:
-        print(f"[TRANSFORM ERROR - BATCH] {e}")
+        logger.error("Batch transform failed: %s", e)
         raise
 
 
@@ -133,26 +158,16 @@ def transform_single(data: dict) -> pd.DataFrame:
     """
     try:
         df = pd.DataFrame([data])
-
-        # Ensure numeric columns have the right dtype before arithmetic
-        numeric_cols = [
-            "Age", "Unit_Price", "Quantity", "Discount_Amount", "Total_Amount",
-            "Session_Duration_Minutes", "Pages_Viewed", "Delivery_Time_Days",
-            "Customer_Rating",
-        ]
-        for col in numeric_cols:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-
+        df = _normalise_raw_types(df)
         df = _engineer_features(df)
 
         # Select only the columns that exist in the final schema
         available = [c for c in _FINAL_COLUMNS if c in df.columns]
         df = df[available]
 
-        print("[TRANSFORM] Single-record transformation completed.")
+        logger.info("Single-record transformation completed.")
         return df
 
     except Exception as e:
-        print(f"[TRANSFORM ERROR - SINGLE] {e}")
+        logger.error("Single transform failed: %s", e)
         raise
