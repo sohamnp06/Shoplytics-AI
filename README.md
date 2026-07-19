@@ -5,19 +5,26 @@
 
 **Unified ETL • Event-Driven Ingestion • Data Governance • Relational Warehousing • Executive Business Intelligence**
 
-[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white&style=for-the-badge)](https://www.python.org/)
-[![Flask](https://img.shields.io/badge/Flask-Backend-000000?logo=flask&logoColor=white&style=for-the-badge)](https://flask.palletsprojects.com/)
-[![Pandas](https://img.shields.io/badge/Pandas-Data%20Processing-150458?logo=pandas&logoColor=white&style=for-the-badge)](https://pandas.pydata.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-4169E1?logo=postgresql&logoColor=white&style=for-the-badge)](https://www.postgresql.org/)
-[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-ORM-D71F00?logo=sqlalchemy&logoColor=white&style=for-the-badge)](https://www.sqlalchemy.org/)
-[![Power BI](https://img.shields.io/badge/Power%20BI-Dashboard-F2C811?logo=powerbi&logoColor=black&style=for-the-badge)](https://powerbi.microsoft.com/)
-[![Pytest](https://img.shields.io/badge/Pytest-Testing-0A9EDC?logo=pytest&logoColor=white&style=for-the-badge)](https://docs.pytest.org/)
-
 <br/>
 
-![Shoplytics AI — Project Demo](static/dashboard/projectWorking.gif)
+<a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white&style=for-the-badge" alt="Python"/></a>
+<a href="https://flask.palletsprojects.com/"><img src="https://img.shields.io/badge/Flask-Backend-000000?logo=flask&logoColor=white&style=for-the-badge" alt="Flask"/></a>
+<a href="https://pandas.pydata.org/"><img src="https://img.shields.io/badge/Pandas-Data%20Processing-150458?logo=pandas&logoColor=white&style=for-the-badge" alt="Pandas"/></a>
+<a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-Database-4169E1?logo=postgresql&logoColor=white&style=for-the-badge" alt="PostgreSQL"/></a>
+<a href="https://www.sqlalchemy.org/"><img src="https://img.shields.io/badge/SQLAlchemy-ORM-D71F00?logo=sqlite&logoColor=white&style=for-the-badge" alt="SQLAlchemy"/></a>
+<a href="https://powerbi.microsoft.com/"><img src="https://img.shields.io/badge/Power%20BI-Dashboard-F2C811?logo=powerbi&logoColor=black&style=for-the-badge" alt="Power BI"/></a>
+<a href="https://docs.pytest.org/"><img src="https://img.shields.io/badge/Pytest-Testing-0A9EDC?logo=pytest&logoColor=white&style=for-the-badge" alt="Pytest"/></a>
+
+<br/><br/>
+
+---
+
+### 🎬 Live End-to-End Project Walkthrough
+
+<img src="static/dashboard/projectWorking.gif" alt="Shoplytics AI — Live Project Demo" width="900"/>
 
 </div>
+
 
 ---
 
