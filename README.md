@@ -5,13 +5,17 @@
 
 **Unified ETL • Event-Driven Ingestion • Data Governance • Relational Warehousing • Executive Business Intelligence**
 
-[![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white&style=flat-square)](https://www.python.org/)
-[![Flask](https://img.shields.io/badge/Flask-Backend-black?logo=flask&logoColor=white&style=flat-square)](https://flask.palletsprojects.com/)
-[![Pandas](https://img.shields.io/badge/Pandas-Data%20Processing-150458?logo=pandas&logoColor=white&style=flat-square)](https://pandas.pydata.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791?logo=postgresql&logoColor=white&style=flat-square)](https://www.postgresql.org/)
-[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-ORM-red?style=flat-square)](https://www.sqlalchemy.org/)
-[![Power BI](https://img.shields.io/badge/Power%20BI-Dashboard-F2C811?logo=powerbi&logoColor=black&style=flat-square)](https://powerbi.microsoft.com/)
-[![Testing](https://img.shields.io/badge/Tests-PyTest-success?logo=pytest&logoColor=white&style=flat-square)](https://docs.pytest.org/)
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white&style=for-the-badge)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-Backend-000000?logo=flask&logoColor=white&style=for-the-badge)](https://flask.palletsprojects.com/)
+[![Pandas](https://img.shields.io/badge/Pandas-Data%20Processing-150458?logo=pandas&logoColor=white&style=for-the-badge)](https://pandas.pydata.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-4169E1?logo=postgresql&logoColor=white&style=for-the-badge)](https://www.postgresql.org/)
+[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-ORM-D71F00?logo=sqlalchemy&logoColor=white&style=for-the-badge)](https://www.sqlalchemy.org/)
+[![Power BI](https://img.shields.io/badge/Power%20BI-Dashboard-F2C811?logo=powerbi&logoColor=black&style=for-the-badge)](https://powerbi.microsoft.com/)
+[![Pytest](https://img.shields.io/badge/Pytest-Testing-0A9EDC?logo=pytest&logoColor=white&style=for-the-badge)](https://docs.pytest.org/)
+
+<br/>
+
+![Shoplytics AI — Project Demo](static/dashboard/projectWorking.gif)
 
 </div>
 
@@ -239,7 +243,8 @@ Shoplytics AI/
 ├── static/
 │   ├── app.css               # Ingestion portal styles
 │   ├── dashboard/
-│   │   ├── Dashboard.png     # Power BI report screenshot
+│   │   ├── Dashboard.png         # Power BI report screenshot
+│   │   ├── projectWorking.gif    # End-to-end project demo recording
 │   │   └── databaseDashboard.pbix # Power BI report file
 │   └── img/
 │       └── dashboard_backgroung.jpg
